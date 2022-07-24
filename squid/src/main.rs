@@ -91,60 +91,52 @@ async fn main() {
             // Install the package
             println!("{} {}", "Installing".green().bold(), package.name);
             let bin_folder = data_path.join(&package.name).join("bin");
-            if bin_folder.exists() && bin_folder.is_dir() {
-                let vec_entries = Vec::from_iter(fs::read_dir(bin_folder).unwrap().into_iter());
-                vec_entries.par_iter().for_each(|entry| {
-                    let entry = entry.as_ref().unwrap();
-                    println!(
-                        "{} {}",
-                        "Linking".blue().bold(),
-                        entry.file_name().to_str().unwrap()
-                    );
-                    // Create symlink from the file to the global bin folder.
-                    let target = data_path.join(".bin").join(entry.file_name());
-                    let target_root = target.parent().unwrap();
-                    if !target_root.exists() {
-                        fs::create_dir_all(target_root).unwrap();
-                    }
-                    // If the target already exists, ask the user if they would like to skip this file or replace it.
-                    if target.exists() {
-                        let expanded = target.canonicalize().unwrap();
-                        // LOL spaghetti code. basically ../../ then the name of the file(directory).
-                        let package = expanded
-                            .parent()
-                            .unwrap()
-                            .parent()
-                            .unwrap()
-                            .file_name()
-                            .unwrap()
-                            .to_str()
-                            .unwrap();
-                        println!(
-                            "{}: File {} already exists from package {}",
-                            "Error".red().bold(),
-                            target.to_str().unwrap(),
-                            package
-                        );
-                        print!("{}", "Would you like to replace it? (y/n) ");
-                        let mut input = String::new();
-                        std::io::stdin().read_line(&mut input).unwrap();
-                        if input.trim() == "y" {
-                            fs::remove_file(&target).unwrap();
-                            #[cfg(windows)]
-                            {
-                                if entry.path().is_dir() {
-                                    os::windows::fs::symlink_dir(entry.path(), target).unwrap();
-                                } else {
-                                    os::windows::fs::symlink_file(entry.path(), target).unwrap();
-                                }
-                            }
+            if !(bin_folder.exists() && bin_folder.is_dir()) {
+                println!(
+                    "{}: {}",
+                    "Warning".yellow().bold(),
+                    "No installation target found"
+                );
+            }
 
-                            #[cfg(not(windows))]
-                            os::unix::fs::symlink(entry.path(), target).unwrap();
-                        } else {
-                            println!("{}", "Skipping...".blue().bold());
-                        }
-                    } else {
+            let vec_entries = Vec::from_iter(fs::read_dir(bin_folder).unwrap().into_iter());
+            vec_entries.par_iter().for_each(|entry| {
+                let entry = entry.as_ref().unwrap();
+                println!(
+                    "{} {}",
+                    "Linking".blue().bold(),
+                    entry.file_name().to_str().unwrap()
+                );
+                // Create symlink from the file to the global bin folder.
+                let target = data_path.join(".bin").join(entry.file_name());
+                let target_root = target.parent().unwrap();
+                if !target_root.exists() {
+                    fs::create_dir_all(target_root).unwrap();
+                }
+                // If the target already exists, ask the user if they would like to skip this file or replace it.
+                if target.exists() {
+                    let expanded = target.canonicalize().unwrap();
+                    // LOL spaghetti code. basically ../../ then the name of the file(directory).
+                    let package = expanded
+                        .parent()
+                        .unwrap()
+                        .parent()
+                        .unwrap()
+                        .file_name()
+                        .unwrap()
+                        .to_str()
+                        .unwrap();
+                    println!(
+                        "{}: File {} already exists from package {}",
+                        "Error".red().bold(),
+                        target.to_str().unwrap(),
+                        package
+                    );
+                    print!("{}", "Would you like to replace it? (y/n) ");
+                    let mut input = String::new();
+                    std::io::stdin().read_line(&mut input).unwrap();
+                    if input.trim() == "y" {
+                        fs::remove_file(&target).unwrap();
                         #[cfg(windows)]
                         {
                             if entry.path().is_dir() {
@@ -156,15 +148,23 @@ async fn main() {
 
                         #[cfg(not(windows))]
                         os::unix::fs::symlink(entry.path(), target).unwrap();
+                    } else {
+                        println!("{}", "Skipping...".blue().bold());
                     }
-                });
-            } else {
-                println!(
-                    "{}: {}",
-                    "Warning".yellow().bold(),
-                    "No installation target found"
-                );
-            }
+                } else {
+                    #[cfg(windows)]
+                    {
+                        if entry.path().is_dir() {
+                            os::windows::fs::symlink_dir(entry.path(), target).unwrap();
+                        } else {
+                            os::windows::fs::symlink_file(entry.path(), target).unwrap();
+                        }
+                    }
+
+                    #[cfg(not(windows))]
+                    os::unix::fs::symlink(entry.path(), target).unwrap();
+                }
+            });
         }
     }
 }
