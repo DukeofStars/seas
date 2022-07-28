@@ -1,12 +1,12 @@
 use crate::{format::ProgressDisplay, Progress};
 
 #[derive(Clone)]
-pub struct TimedFormatter<T: ProgressDisplay> {
+pub struct TimedDisplay<T: ProgressDisplay> {
     last_time: std::time::Instant,
     formatter: T,
 }
 
-impl<Inner: ProgressDisplay> ProgressDisplay for TimedFormatter<Inner> {
+impl<Inner: ProgressDisplay> ProgressDisplay for TimedDisplay<Inner> {
     fn display<T: ExactSizeIterator, F: ProgressDisplay>(
         &mut self,
         progress: &Progress<T, F>,
@@ -30,15 +30,15 @@ impl<Inner: ProgressDisplay> ProgressDisplay for TimedFormatter<Inner> {
 }
 
 /// Creates a new `TimedFormatter` with the given `ProgressDisplay`.
-pub trait TimedFormatterExt {
-    fn timed(self) -> TimedFormatter<Self>
+pub trait Timeify {
+    fn timed(self) -> TimedDisplay<Self>
     where
         Self: ProgressDisplay;
 }
 
-impl<T: ProgressDisplay> TimedFormatterExt for T {
-    fn timed(self) -> TimedFormatter<Self> {
-        TimedFormatter {
+impl<T: ProgressDisplay> Timeify for T {
+    fn timed(self) -> TimedDisplay<Self> {
+        TimedDisplay {
             last_time: std::time::Instant::now(),
             formatter: self,
         }

@@ -4,7 +4,6 @@ use format::{ProgressBar, ProgressDisplay};
 
 pub mod format;
 pub mod prelude;
-pub mod timed;
 mod traits;
 
 // Testing
