@@ -3,6 +3,12 @@ use super::ProgressDisplay;
 #[derive(Clone)]
 pub struct LinkedDisplay<T: ProgressDisplay, F: ProgressDisplay>(T, F);
 
+impl<T: ProgressDisplay, F: ProgressDisplay> LinkedDisplay<T, F> {
+    pub fn add<U: ProgressDisplay>(self, other: U) -> LinkedDisplay<Self, U> {
+        LinkedDisplay(self, other)
+    }
+}
+
 impl<T: ProgressDisplay, F: ProgressDisplay> ProgressDisplay for LinkedDisplay<T, F> {
     fn display<Iter: ExactSizeIterator, X: ProgressDisplay>(
         &mut self,
