@@ -1,11 +1,15 @@
 use std::{io::Write, iter::ExactSizeIterator};
 
-use format::ProgressDisplay;
+use format::{ProgressBar, ProgressDisplay};
 
 pub mod format;
 pub mod prelude;
 pub mod timed;
 mod traits;
+
+// Testing
+#[cfg(test)]
+mod tests;
 
 // Core
 pub struct Progress<T: ExactSizeIterator, F: format::ProgressDisplay> {
@@ -15,13 +19,13 @@ pub struct Progress<T: ExactSizeIterator, F: format::ProgressDisplay> {
     pub len: usize,
 }
 
-impl<T: ExactSizeIterator> Progress<T, format::JaspFormatter> {
+impl<T: ExactSizeIterator> Progress<T, ProgressBar> {
     pub fn new(iter: T) -> Self {
         Self {
             len: iter.len(),
             iter,
             i: 0,
-            format: format::JaspFormatter::default(),
+            format: ProgressBar::default(),
         }
     }
 }
@@ -35,14 +39,18 @@ impl<T: ExactSizeIterator, F: ProgressDisplay> Progress<T, F> {
             len: self.len,
         }
     }
+
+    fn draw(&mut self) -> String {
+        let mut format = self.format.clone();
+        format!("{}", format.display(self))
+    }
 }
 
 impl<T: ExactSizeIterator, F: format::ProgressDisplay> Iterator for Progress<T, F> {
     type Item = T::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut format = self.format.clone();
-        print!("\r{}", format.display(self));
+        print!("\r{}", self.draw());
         std::io::stdout().flush().unwrap();
         self.i += 1;
 

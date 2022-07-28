@@ -2,15 +2,10 @@ use colored::Colorize;
 
 use crate::Progress;
 
-pub trait ProgressDisplay: Sized + Clone {
-    fn display<T: ExactSizeIterator, F: ProgressDisplay>(
-        &mut self,
-        progress: &Progress<T, F>,
-    ) -> String;
-}
+use super::ProgressDisplay;
 
 #[derive(Clone)]
-pub struct JaspFormatter {
+pub struct ProgressBar {
     /// The amount of blocks in the progress bar.
     /// eg. [###] would be 3 blocks.
     blocks: usize,
@@ -18,7 +13,7 @@ pub struct JaspFormatter {
     title: String,
 }
 
-impl Default for JaspFormatter {
+impl Default for ProgressBar {
     fn default() -> Self {
         Self {
             blocks: 10,
@@ -27,7 +22,7 @@ impl Default for JaspFormatter {
     }
 }
 
-impl JaspFormatter {
+impl ProgressBar {
     /// Sets the amount of blocks in the progress bar.
     /// eg. [###] would be 3 blocks.
     pub fn with_blocks(mut self, blocks: usize) -> Self {
@@ -39,9 +34,14 @@ impl JaspFormatter {
         self.title = title.to_string() + " ";
         self
     }
+
+    /// Creates a new progress bar.
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
-impl ProgressDisplay for JaspFormatter {
+impl ProgressDisplay for ProgressBar {
     fn display<T: ExactSizeIterator, F: ProgressDisplay>(
         &mut self,
         progress: &Progress<T, F>,
