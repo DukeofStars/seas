@@ -2085,10 +2085,13 @@ dependencies = [
  "compression",
  "directories",
  "guid-create",
+ "jasp",
  "jellyfish",
  "rayon",
+ "serde",
  "tar",
  "tokio",
+ "toml",
  "trauma",
 ]
 

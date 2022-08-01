@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::Package;
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Repository {
     pub url: String,
 }

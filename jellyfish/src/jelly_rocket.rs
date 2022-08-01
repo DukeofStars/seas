@@ -31,6 +31,7 @@ pub fn get_package(name: String) -> Option<Json<Package>> {
         let guid = GUID::parse(file_sections.1).unwrap();
         versions.push(PackageVersion {
             id: guid,
+            name: name.clone(),
             version: version.to_string(),
             required: vec![],
             dependencies: vec![],

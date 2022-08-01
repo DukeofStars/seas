@@ -1,13 +1,19 @@
-use std::{fs, os, path::PathBuf};
+use std::{
+    fs,
+    io::{self, Write},
+    os,
+    path::PathBuf,
+};
 
 use colored::Colorize;
 use compression::prelude::{DecodeExt, GZipDecoder};
 use directories::ProjectDirs;
 use jellyfish::{request::Repository, Package, PackageVersion};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use serde::{Deserialize, Serialize};
 use trauma::{download::Download, downloader::DownloaderBuilder};
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub enum InstallStages {
     #[default]
     None,
@@ -23,16 +29,17 @@ pub enum InstallStages {
     Cleanup,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Installer {
+    pub file_path: PathBuf,
+    pub relative_path: PathBuf,
+    pub download_path: String,
+    pub bin_folder: PathBuf,
     pub stage: InstallStages,
     pub repo: Repository,
     pub package: Package,
     pub package_version: PackageVersion,
-    pub file_path: PathBuf,
-    pub relative_path: PathBuf,
-    pub download_path: String,
     pub uncompressed: Vec<u8>,
-    pub bin_folder: PathBuf,
 }
 
 impl Installer {
@@ -40,6 +47,10 @@ impl Installer {
         self.stage = stage;
 
         let path = temp_path().join("Continue.toml");
+
+        let toml = toml::Value::try_from(&self).unwrap();
+
+        fs::write(path, toml.to_string()).unwrap();
     }
 
     pub async fn connect_to_repository() -> Self {
@@ -52,6 +63,7 @@ impl Installer {
             },
             package_version: PackageVersion {
                 id: guid_create::GUID::rand(),
+                name: Default::default(),
                 version: "0.0.0".to_string(),
                 required: Default::default(),
                 dependencies: Default::default(),
@@ -66,7 +78,7 @@ impl Installer {
             uncompressed: Default::default(),
             bin_folder: Default::default(),
         };
-        me.stage = InstallStages::ConnectToRepository;
+        me.set_stage(InstallStages::ConnectToRepository).await;
         // Connect to the repository
         let repository = "http://localhost:8000/jellyfish/"; // TODO: load this from config file and allow for multiple repositories
         me.repo = Repository::connect(repository).await;
@@ -75,7 +87,10 @@ impl Installer {
     }
 
     pub async fn find_package(&mut self, name: &str) -> &mut Self {
-        self.stage = InstallStages::FindPackage;
+        self.set_stage(InstallStages::FindPackage).await;
+        if data_path().join(&name).exists() {
+            fs::remove_dir_all(data_path().join(&name)).unwrap();
+        }
         // Get pacakge from server
         self.package = self
             .repo
@@ -87,7 +102,7 @@ impl Installer {
     }
 
     pub async fn get_package_version(&mut self, version: Option<String>) -> &mut Self {
-        self.stage = InstallStages::GetPackageVersion;
+        self.set_stage(InstallStages::GetPackageVersion).await;
         self.package_version = match version {
             Some(version) => self
                 .package
@@ -108,7 +123,7 @@ impl Installer {
     }
 
     pub async fn pre_download(&mut self) -> &mut Self {
-        self.stage = InstallStages::PreDownload;
+        self.set_stage(InstallStages::PreDownload).await;
         self.relative_path = PathBuf::from("dist").join(&self.package.name).join(format!(
             "{}-{}.tar.gz",
             self.package_version.version, self.package_version.id
@@ -127,7 +142,7 @@ impl Installer {
     }
 
     pub async fn download(&mut self) -> &mut Self {
-        self.stage = InstallStages::Download;
+        self.set_stage(InstallStages::Download).await;
         // Download the package
         println!("{} {}", "Downloading".green().bold(), self.download_path);
         let downloads = vec![Download::try_from(self.download_path.as_str()).unwrap()]; // In the future, get all the downloads to be performed and do all of them at once.
@@ -140,7 +155,7 @@ impl Installer {
     }
 
     pub async fn extract(&mut self) -> &mut Self {
-        self.stage = InstallStages::Extract;
+        self.set_stage(InstallStages::Extract).await;
         // Extract the package
         self.file_path = temp_path().join(format!(
             "{}-{}.tar.gz",
@@ -164,7 +179,7 @@ impl Installer {
     }
 
     pub async fn unwrap(&mut self) -> &mut Self {
-        self.stage = InstallStages::Unwrap;
+        self.set_stage(InstallStages::Unwrap).await;
         // Unwrap tar ball
         let mut tar_ball = tar::Archive::new(self.uncompressed.as_slice());
         tar_ball
@@ -175,7 +190,7 @@ impl Installer {
     }
 
     pub async fn pre_install(&mut self) -> &mut Self {
-        self.stage = InstallStages::PreInstall;
+        self.set_stage(InstallStages::PreInstall).await;
         println!("{} {}", "Installing".green().bold(), self.package.name);
         self.bin_folder = data_path().join(&self.package.name).join("bin");
         if !(self.bin_folder.exists() && self.bin_folder.is_dir()) {
@@ -190,7 +205,7 @@ impl Installer {
     }
 
     pub async fn install(&mut self) -> &mut Self {
-        self.stage = InstallStages::Install;
+        self.set_stage(InstallStages::Install).await;
         let vec_entries =
             Vec::from_iter(fs::read_dir(self.bin_folder.clone()).unwrap().into_iter());
         vec_entries.par_iter().for_each(|entry| {
@@ -201,13 +216,14 @@ impl Installer {
                 entry.file_name().to_str().unwrap()
             );
             // Create symlink from the file to the global bin folder.
-            let target = self.bin_folder.join(entry.file_name());
+            let target = data_path().join(".bin").join(entry.file_name());
             let target_root = target.parent().unwrap();
             if !target_root.exists() {
                 fs::create_dir_all(target_root).unwrap();
             }
             // If the target already exists, ask the user if they would like to skip this file or replace it.
-            if target.exists() {
+            // We use fs::read_link instead of PathBuf::exists because PathBuf::exists traverse symbolic links, and we don't want that.
+            if fs::read_link(&target).is_ok() {
                 let expanded = target.canonicalize().unwrap();
                 // LOL spaghetti code. basically ../../ then the name of the file(directory).
                 let package = expanded
@@ -226,8 +242,9 @@ impl Installer {
                     package
                 );
                 print!("{}", "Would you like to replace it? (y/n) ");
+                io::stdout().flush().unwrap();
                 let mut input = String::new();
-                std::io::stdin().read_line(&mut input).unwrap();
+                io::stdin().read_line(&mut input).unwrap();
                 if input.trim() == "y" {
                     fs::remove_file(&target).unwrap();
                     #[cfg(windows)]
@@ -263,9 +280,23 @@ impl Installer {
     }
 
     pub async fn clean_up(&mut self) -> &mut Self {
-        self.stage = InstallStages::Cleanup;
+        self.set_stage(InstallStages::Cleanup).await;
         // Remove the temp file.
         fs::remove_file(&self.file_path).unwrap();
+        // Remove the continue file.
+        fs::remove_file(temp_path().join("Continue.toml")).unwrap();
+
+        // Write package.toml if it doesn't exist.
+        let package_toml = data_path().join(&self.package.name).join("package.toml");
+        if !package_toml.exists() {
+            let mut file = fs::File::create(package_toml).unwrap();
+            file.write_all(
+                toml::to_string_pretty(&self.package_version)
+                    .unwrap()
+                    .as_bytes(),
+            )
+            .unwrap();
+        }
 
         self
     }

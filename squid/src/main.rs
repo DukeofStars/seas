@@ -1,8 +1,8 @@
 use clap::{Args, Parser, Subcommand};
-use squid::install::Installer;
+use squid::{install::Installer, uninstall::Uninstaller};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), String> {
     let cli = Cli::parse();
 
     use SubCommands::*;
@@ -29,7 +29,14 @@ async fn main() {
                 .clean_up()
                 .await;
         }
+        Uninstall(args) => {
+            let uninstaller = Uninstaller::find_package(args.name.as_str()).await?;
+            uninstaller.unlink().await;
+            uninstaller.delete().await;
+        }
     }
+
+    Ok(())
 }
 
 #[derive(Parser)]
@@ -41,6 +48,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum SubCommands {
     Install(InstallArgs),
+    Uninstall(UninstallArgs),
 }
 
 #[derive(Args)]
@@ -48,4 +56,9 @@ struct InstallArgs {
     name: String,
     #[clap(short, long)]
     version: Option<String>, // Todo: Change String to a proper version struct
+}
+
+#[derive(Args)]
+struct UninstallArgs {
+    name: String,
 }

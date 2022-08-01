@@ -35,6 +35,7 @@ pub struct Package {
 #[derive(Debug, Clone)]
 pub struct PackageVersion {
     pub id: GUID,
+    pub name: String,
     pub version: String, // TODO: make this a proper version struct
     pub required: Vec<PathBuf>,
     pub dependencies: Vec<GUID>,
