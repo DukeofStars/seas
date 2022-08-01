@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Package;
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Repository {
     pub url: String,
 }

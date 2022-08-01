@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
     any(feature = "rocket", feature = "request"),
     derive(Deserialize, Serialize)
 )]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Package {
     pub author: String,
     pub name: String,

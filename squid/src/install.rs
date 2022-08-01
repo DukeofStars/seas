@@ -15,24 +15,26 @@ use trauma::{download::Download, downloader::DownloaderBuilder};
 
 use crate::{data_path, temp_path};
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, PartialEq, PartialOrd, Clone)]
 pub enum InstallStages {
     #[default]
-    None,
-    ConnectToRepository,
-    FindPackage,
-    GetPackageVersion,
-    PreDownload,
-    Download,
-    Extract,
-    Unwrap,
-    PreInstall,
-    Install,
-    Cleanup,
+    None = 0,
+    ConnectToRepository = 1,
+    FindPackage = 2,
+    GetPackageVersion = 3,
+    PreDownload = 4,
+    Download = 5,
+    Extract = 6,
+    Unwrap = 7,
+    PreInstall = 8,
+    Install = 9,
+    Cleanup = 10,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Installer {
+    pub name: String,
+    pub version: Option<String>,
     pub file_path: PathBuf,
     pub relative_path: PathBuf,
     pub download_path: String,
@@ -45,6 +47,41 @@ pub struct Installer {
 }
 
 impl Installer {
+    pub async fn resume(&mut self) {
+        use InstallStages::*;
+        let mut me = self.clone();
+        if me.stage <= ConnectToRepository {
+            println!("Cannot restart from such an early stage. Try installing again.");
+        }
+        if me.stage <= FindPackage {
+            me.find_package().await;
+        }
+        if me.stage <= GetPackageVersion {
+            me.get_package_version().await;
+        }
+        if me.stage <= PreDownload {
+            me.pre_download().await;
+        }
+        if me.stage <= Download {
+            me.download().await;
+        }
+        if me.stage <= Extract {
+            me.extract().await;
+        }
+        if me.stage <= Unwrap {
+            me.unwrap().await;
+        }
+        if me.stage <= PreInstall {
+            me.pre_install().await;
+        }
+        if me.stage <= Install {
+            me.install().await;
+        }
+        if me.stage <= Cleanup {
+            me.clean_up().await;
+        }
+    }
+
     pub async fn set_stage(&mut self, stage: InstallStages) {
         self.stage = stage;
 
@@ -55,8 +92,10 @@ impl Installer {
         fs::write(path, toml.to_string()).unwrap();
     }
 
-    pub async fn connect_to_repository() -> Self {
+    pub async fn connect_to_repository(name: &str, version: Option<String>) -> Self {
         let mut me = Self {
+            name: name.to_string(),
+            version,
             package: Package {
                 author: Default::default(),
                 name: Default::default(),
@@ -89,29 +128,29 @@ impl Installer {
         me
     }
 
-    pub async fn find_package(&mut self, name: &str) -> &mut Self {
+    pub async fn find_package(&mut self) -> &mut Self {
         self.set_stage(InstallStages::FindPackage).await;
-        if data_path().join(&name).exists() {
-            fs::remove_dir_all(data_path().join(&name)).unwrap();
+        if data_path().join(&self.name).exists() {
+            fs::remove_dir_all(data_path().join(&self.name)).unwrap();
         }
         // Get pacakge from server
         self.package = self
             .repo
-            .get_package(name)
+            .get_package(&self.name)
             .await
             .expect("Failed to find requested package from the remote");
 
         self
     }
 
-    pub async fn get_package_version(&mut self, version: Option<String>) -> &mut Self {
+    pub async fn get_package_version(&mut self) -> &mut Self {
         self.set_stage(InstallStages::GetPackageVersion).await;
-        self.package_version = match version {
+        self.package_version = match &self.version {
             Some(version) => self
                 .package
                 .versions
                 .iter()
-                .filter(|x| x.version == version)
+                .filter(|x| x.version == version.clone())
                 .next()
                 .expect("The requested version was not found"),
             None => self
