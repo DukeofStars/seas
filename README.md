@@ -4,9 +4,6 @@ The Seas project aims to unify package management and installation (specifically
 ###### Note
 The Seas project is still under heavy development and is not yet ready for use.
 
-## Jasp
-Jasp stands for Just A Simple Progress bar.
-
 ## Jellyfish
 Jellyfish is a barebones, global package format that is extendable. It serves as a kind of base, where everything else branches off.
 It also contains some boilerplate code for setting up a jellyfish repository with rocket.
