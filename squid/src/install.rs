@@ -7,11 +7,13 @@ use std::{
 
 use colored::Colorize;
 use compression::prelude::{DecodeExt, GZipDecoder};
-use directories::ProjectDirs;
+
 use jellyfish::{request::Repository, Package, PackageVersion};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use trauma::{download::Download, downloader::DownloaderBuilder};
+
+use crate::{data_path, temp_path};
 
 #[derive(Default, Serialize, Deserialize)]
 pub enum InstallStages {
@@ -301,14 +303,4 @@ impl Installer {
 
         self
     }
-}
-
-pub fn data_path() -> PathBuf {
-    let project_dirs = ProjectDirs::from("", "", "squid").unwrap();
-    project_dirs.data_dir().to_path_buf()
-}
-
-pub fn temp_path() -> PathBuf {
-    let project_dirs = ProjectDirs::from("", "", "squid").unwrap();
-    project_dirs.cache_dir().to_path_buf()
 }

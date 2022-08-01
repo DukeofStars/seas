@@ -1,9 +1,10 @@
 use std::{
     fs,
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 
-use install::data_path;
+use directories::ProjectDirs;
 use jellyfish::PackageVersion;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
@@ -31,4 +32,19 @@ pub fn get_packages() -> Vec<PackageVersion> {
     });
     let packages = packages.lock().unwrap();
     packages.to_vec()
+}
+
+pub fn data_path() -> PathBuf {
+    let project_dirs = ProjectDirs::from("", "", "squid").unwrap();
+    project_dirs.data_dir().to_path_buf()
+}
+
+pub fn temp_path() -> PathBuf {
+    let project_dirs = ProjectDirs::from("", "", "squid").unwrap();
+    project_dirs.cache_dir().to_path_buf()
+}
+
+pub fn config_path() -> PathBuf {
+    let project_dirs = ProjectDirs::from("", "", "squid").unwrap();
+    project_dirs.config_dir().to_path_buf()
 }

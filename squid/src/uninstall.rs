@@ -3,7 +3,7 @@ use std::fs::{self, DirEntry};
 use jellyfish::PackageVersion;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::{get_packages, install::data_path};
+use crate::{data_path, get_packages};
 
 #[derive(Debug)]
 pub struct Uninstaller {
