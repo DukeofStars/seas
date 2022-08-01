@@ -1,1 +1,9 @@
+# Get the rust toolchain
+COPY ../rust-toolchain rust-toolchain
+# Get the source for the project
 COPY src src2
+# Log
+PRINT Writing: testing 1 2 3
+# Write the file.
+CMD echo testing 1 2 3 > test.txt --ignore
+OWN test.txt

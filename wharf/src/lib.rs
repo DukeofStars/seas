@@ -1,17 +1,11 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, process::Command};
 
 mod lang;
-use lang::Instruction::*;
+use colored::Colorize;
+use lang::Instruction::{self, *};
 
-pub fn install(path: PathBuf) {
-    let contents = fs::read_to_string(path).expect("Failed to read the file");
-    let instructions_strs = contents.lines();
-    let mut instructions = vec![];
-    instructions_strs
-        .filter(|line| line.trim().len() > 0)
-        .for_each(|line| instructions.push(lang::read_line(line)));
-
-    instructions
+pub fn run(path: PathBuf) {
+    parse(path)
         .iter()
         .for_each(|instruction| match instruction {
             COPY(src, dst) => {
@@ -21,8 +15,68 @@ pub fn install(path: PathBuf) {
                     fs::copy(src, dst).expect("Failed to copy the file");
                 }
             }
+            CMD(cmd, args) => {
+                let mut command = Command::new("cmd.exe");
+                command.args(&["/C", cmd]);
+                args.iter().for_each(|arg| {
+                    if !arg.eq("--ignore") {
+                        command.arg(arg);
+                    }
+                });
+                command.spawn().expect("Failed to execute the command");
+            }
+            OWN(_) => {}
+            PRINT(s) => {
+                println!("{}", s);
+            }
             None => {}
         });
+}
+
+pub fn reverse(path: PathBuf) {
+    parse(path)
+        .iter()
+        .rev()
+        .for_each(|instruction| match instruction {
+            COPY(src, dst) => {
+                if src.is_dir() {
+                    fs::remove_dir_all(dst).expect("Failed to remove the directory");
+                } else {
+                    fs::remove_file(dst).expect("Failed to remove the file");
+                }
+            }
+            CMD(cmd, args) => {
+                let mut cmd_string = cmd.to_owned();
+                args.iter().for_each(|arg| {
+                        cmd_string.push_str(" ");
+                        cmd_string.push_str(arg);
+                });
+                if !cmd_string.contains("--ignore") {
+                    println!("{}: External commands cannot be reversed, if you are the developer, we strongly recommend you use the provided commands that are reversable, or use the OWN command to tell wharf the outputs of the command ({})", "Warning".yellow(), cmd_string)
+                }
+            }
+            OWN(path) => {
+                if path.is_dir() {
+                    fs::remove_dir_all(path).expect("Failed to remove the directory");
+                } else {
+                    fs::remove_file(path).expect("Failed to remove the file");
+                }
+            }
+            // Cannot reverse a print
+            PRINT(_) => {}
+            None => {}
+        })
+}
+
+fn parse(path: PathBuf) -> Vec<Instruction> {
+    let contents = fs::read_to_string(path).expect("Failed to read the file");
+    let instructions_strs = contents.lines();
+    instructions_strs
+        .filter(|line| line.trim().len() > 0)
+        .filter(|line| !line.starts_with("#"))
+        .filter(|line| !line.starts_with("//"))
+        .map(|line| lang::read_line(line))
+        .collect()
 }
 
 // Helper function to copy directories
