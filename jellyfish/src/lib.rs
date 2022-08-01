@@ -39,6 +39,7 @@ pub struct PackageVersion {
     pub version: String, // TODO: make this a proper version struct
     pub required: Vec<PathBuf>,
     pub dependencies: Vec<GUID>,
+    pub flavor: String,
 }
 
 impl Display for Package {

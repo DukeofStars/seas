@@ -67,6 +67,7 @@ impl Installer {
                 version: "0.0.0".to_string(),
                 required: Default::default(),
                 dependencies: Default::default(),
+                flavor: "vanilla".to_string(),
             },
             stage: InstallStages::None,
             repo: Repository {
