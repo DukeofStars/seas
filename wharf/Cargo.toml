@@ -9,3 +9,5 @@ author = "Duke of Stars"
 [dependencies]
 clap = { version = "3.2", features = ["derive"] }
 colored = "2.0.0"
+compression = "0.1.5"
+tar = "0.4.38"

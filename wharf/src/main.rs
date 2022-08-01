@@ -15,6 +15,9 @@ fn main() {
         Reverse(args) => {
             reverse(args.path);
         }
+        Package(args) => {
+            package(args.path);
+        }
     }
 }
 
@@ -30,6 +33,9 @@ enum Command {
     Dock(DockArgs),
     /// Will reverse the target "ship"'s commands and execute them, effectively undoing all the work. Useful for uninstalling.
     Reverse(ReverseArgs),
+    /// Will package a "ship" into a single file.
+    /// This is useful for creating a "ship" that can be distributed to other machines.
+    Package(PackageArgs),
 }
 
 #[derive(Args)]
@@ -39,5 +45,10 @@ struct DockArgs {
 
 #[derive(Args)]
 struct ReverseArgs {
+    path: PathBuf,
+}
+
+#[derive(Args)]
+struct PackageArgs {
     path: PathBuf,
 }
