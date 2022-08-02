@@ -19,8 +19,8 @@ pub fn run(path: PathBuf) {
         path = path.with_extension("").join("build.rope");
     }
     let parsed = parse(&path);
-    if path.parent().is_some() {
-        set_current_dir(path.parent().unwrap()).unwrap();
+    if path.canonicalize().unwrap().parent().is_some() {
+        set_current_dir(path.canonicalize().unwrap().parent().unwrap()).unwrap();
     }
     parsed.iter().for_each(|instruction| match instruction {
         COPY(src, dst) => {
@@ -43,6 +43,12 @@ pub fn run(path: PathBuf) {
         OWN(_) => {}
         PRINT(s) => {
             println!("{}", s);
+        }
+        ATTACH(rope) => {
+            let mut rope = rope.clone();
+            rope.push_str(".rope");
+            let path = PathBuf::from(rope);
+            run(path);
         }
         None => {}
     });
@@ -83,6 +89,11 @@ pub fn reverse(path: PathBuf) {
             }
             // Cannot reverse a print
             PRINT(_) => {}
+            // Reverse the attached rope
+            ATTACH(rope) => {
+                let path = PathBuf::from(rope).with_extension(".rope");
+                reverse(path);
+            }
             None => {}
         })
 }

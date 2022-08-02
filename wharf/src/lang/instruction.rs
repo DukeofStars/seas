@@ -10,6 +10,8 @@ pub enum Instruction {
     PRINT(String),
     /// "Owns" a folder or file, allowing it to be removed when the script is reversed.
     OWN(PathBuf),
+    /// Attaches another "rope" to this one.
+    ATTACH(String),
     None,
 }
 
@@ -37,6 +39,7 @@ impl Instruction {
                     .expect("Expected Path"),
             ),
             "PRINT" => Instruction::PRINT(args.join(" ")),
+            "ATTACH" => Instruction::ATTACH(args.get(0).expect("Expected rope name").to_owned()),
             _ => panic!("Invalid instruction {}", instruction),
         }
     }
