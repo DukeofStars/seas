@@ -11,8 +11,11 @@ It also contains some boilerplate code for setting up a jellyfish repository wit
 ## Seas
 Seas is a package server which hosts a jellyfish repository.
 
-## Squid
-Squid is a package manager frontend, designed for the jellyfish package format.
+## squidserver
+Squid is a package installation backend, that runs on the local machine. It is the central daemon for installations, allowing multiple tasks to be run at once.
+
+# Ink
+Ink is a package installation frontend for Squid.
 
 ## Wharf
 Wharf branches off almost entirely, and is it's own "fork" of the jellyfish format. Packages are loaded onto "ships" which are files containing instructions for wharf.

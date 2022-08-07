@@ -892,6 +892,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ink"
+version = "0.1.0"
+
+[[package]]
 name = "inlinable_string"
 version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
