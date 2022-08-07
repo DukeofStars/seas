@@ -28,11 +28,15 @@ async fn on_connect(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<d
     // Send hello
     println!("New connection from {}", addr);
 
-    // Read contents using ron format
-    let mut contents = String::new();
-    stream.read_to_string(&mut contents).await?;
+    // Obtain header (size of the message)
+    let header: u16 = stream.read_u16().await?;
 
-    let msg: Message = ron::from_str(&contents)?;
+    dbg!(&header);
+
+    // Read contents
+    let mut buf = Vec::with_capacity(header as usize);
+    stream.read_exact(&mut buf).await?;
+    let msg: MessageHeader = ron::from_str(&String::from_utf8(buf.to_vec())?)?;
 
     println!("{} sent: {:?}", addr, msg);
 
