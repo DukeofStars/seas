@@ -31,8 +31,6 @@ async fn on_connect(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<d
     // Obtain header (size of the message)
     let header: u16 = stream.read_u16().await?;
 
-    dbg!(&header);
-
     // Read contents
     let mut buf = Vec::with_capacity(header as usize);
     stream.read_exact(&mut buf).await?;
