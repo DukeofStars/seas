@@ -12,6 +12,10 @@ pub enum Instruction {
     OWN(PathBuf),
     /// Attaches another "rope" to this one.
     ATTACH(String),
+    /// Runs a specified command then checks it's exit code, if it fails, the script will exit.
+    CHECK(String, Vec<String>),
+    /// Runs a specified command then checks it's exit code, if it succeeds, the script will exit.
+    CHECKERR(String, Vec<String>),
     None,
 }
 
@@ -40,6 +44,14 @@ impl Instruction {
             ),
             "PRINT" => Instruction::PRINT(args.join(" ")),
             "ATTACH" => Instruction::ATTACH(args.get(0).expect("Expected rope name").to_owned()),
+            "CHECK" => Instruction::CHECK(
+                args.get(0).expect("Expected command").to_owned(),
+                args.split_first().unwrap().1.to_vec(),
+            ),
+            "CHECKERR" => Instruction::CHECKERR(
+                args.get(0).expect("Expected command").to_owned(),
+                args.split_first().unwrap().1.to_vec(),
+            ),
             _ => panic!("Invalid instruction {}", instruction),
         }
     }

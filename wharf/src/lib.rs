@@ -1,4 +1,9 @@
-use std::{env::set_current_dir, fs, path::PathBuf, process::Command};
+use std::{
+    env::set_current_dir,
+    fs,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 mod lang;
 use colored::Colorize;
@@ -20,7 +25,15 @@ pub fn run(path: PathBuf) {
     }
     let parsed = parse(&path);
     if path.canonicalize().unwrap().parent().is_some() {
-        set_current_dir(path.canonicalize().unwrap().parent().unwrap()).unwrap();
+        let path = path
+            .canonicalize()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .replace("\\\\?\\", "");
+        set_current_dir(path).unwrap();
     }
     parsed.iter().for_each(|instruction| match instruction {
         COPY(src, dst) => {
@@ -50,6 +63,26 @@ pub fn run(path: PathBuf) {
             let path = PathBuf::from(rope);
             run(path);
         }
+        CHECK(cmd, args) => {
+            let mut command = Command::new("cmd.exe");
+            command.args(&["/C", cmd]);
+            args.iter().for_each(|arg| {
+                command.arg(arg);
+            });
+            command.stdin(Stdio::null()).stdout(Stdio::null());
+            let status = command.status().expect("Failed to execute the command");
+            if !status.success() {
+                std::process::exit(status.code().unwrap_or(1));
+            }
+        }
+        CHECKERR(cmd, args) => {
+            let mut command = Command::new("cmd.exe");
+            command.args(&["/C", cmd]);
+            args.iter().for_each(|arg| {
+                command.arg(arg);
+            });
+            command.spawn().expect("Failed to execute the command");
+        }
         None => {}
     });
 }
@@ -57,7 +90,15 @@ pub fn run(path: PathBuf) {
 pub fn reverse(path: PathBuf) {
     let parsed = parse(&path);
     if path.parent().is_some() {
-        set_current_dir(path.parent().unwrap()).unwrap();
+        let path = path
+            .canonicalize()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .replace("\\\\?\\", "");
+        set_current_dir(path).unwrap();
     }
     parsed
         .iter()
@@ -94,6 +135,9 @@ pub fn reverse(path: PathBuf) {
                 let path = PathBuf::from(rope).with_extension(".rope");
                 reverse(path);
             }
+            // Cannot reverse a check
+            CHECK(_, _) => {}
+            CHECKERR(_, _) => {}
             None => {}
         })
 }
