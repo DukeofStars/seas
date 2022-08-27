@@ -1,5 +1,6 @@
 use std::{error::Error, io, net::SocketAddr};
 
+use serde::Deserializer;
 use tokio::{
     io::AsyncReadExt,
     net::{TcpListener, TcpStream},
@@ -25,16 +26,20 @@ async fn main() -> Result<(), io::Error> {
 }
 
 async fn on_connect(mut stream: TcpStream, addr: SocketAddr) -> Result<(), Box<dyn Error>> {
-    // Send hello
     println!("New connection from {}", addr);
 
     // Obtain header (size of the message)
-    let header: u16 = stream.read_u16().await?;
+    let header: u16 = stream.read_u16_le().await?;
+    println!("Header size: {header}");
 
     // Read contents
     let mut buf = Vec::with_capacity(header as usize);
     stream.read_exact(&mut buf).await?;
-    let msg: MessageHeader = ron::from_str(&String::from_utf8(buf.to_vec())?)?;
+    println!("Read data");
+    let string = String::from_utf8(buf.to_vec())?;
+    println!("Read utf8 string '{}'", string);
+    let msg: Message = Message::Hello(1);
+    println!("Serialised message");
 
     println!("{} sent: {:?}", addr, msg);
 
