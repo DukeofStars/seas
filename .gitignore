@@ -1,2 +1,3 @@
 target/
-wharf/my-ship
+wharf/my-ship/
+Cargo.lock
