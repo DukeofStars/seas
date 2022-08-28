@@ -1,10 +1,16 @@
+mod packages;
+
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 use tokio::sync::Mutex;
 
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub enum Task {
     Hello(String),
+}
+
+pub trait TaskProgress: Debug {
+    fn display<'a>(&self) -> &'a str;
 }
 
 pub type CloseToken = Arc<Mutex<CloseTokenInner>>;

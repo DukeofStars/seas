@@ -8,19 +8,23 @@ pub async fn root() -> &'static str {
     "Hello world!"
 }
 
-pub async fn get_task_list(
-    Extension(state): Extension<SharedState>,
-) -> Result<Json<Vec<Task>>, String> {
-    Ok(Json::from(state.read().unwrap().tasks.clone()))
+pub fn get_task_list(Extension(state): Extension<SharedState>) -> Result<String, String> {
+    Ok(state
+        .read()
+        .unwrap()
+        .tasks_progress
+        .iter()
+        .map(|progress| progress.display())
+        .collect())
 }
 
 // Inserts a task for the worker threads to complete
-pub async fn insert_task(
+pub async fn do_task(
     Extension(state): Extension<SharedState>,
     Json(param): Json<Task>,
 ) -> StatusCode {
     info!("Adding task: {:#?}", param);
-    let tasks = &mut state.write().unwrap().tasks;
+    let tasks = &mut state.write().unwrap().tasks_progress;
     tasks.push(param);
     StatusCode::OK
 }

@@ -53,28 +53,14 @@ async fn shutdown_signal(state: SharedState) {
         _ = terminate => {}
     }
 
-    info!("Shutting down the server, this could take up to 10 seconds");
-
-    // Tell worker thread to stop
-    state
-        .write()
-        .unwrap()
-        .worker_thread_close_token
-        .lock()
-        .await
-        .stop();
+    info!("Shutting down the server")
 }
 
 async fn app(state: SharedState) -> Router {
-    let _worker_thread = tokio::spawn(worker::worker(
-        state.clone(),
-        state.read().unwrap().worker_thread_close_token.clone(),
-    ));
-
     Router::new()
         .route("/", get(routes::root))
         .route("/tasks/", get(routes::get_task_list))
-        .route("/do", post(routes::insert_task))
+        .route("/do", post(routes::do_task))
         .layer(Extension(state))
 }
 
@@ -83,5 +69,4 @@ type SharedState = Arc<RwLock<State>>;
 #[derive(Debug, Default)]
 pub struct State {
     tasks_progress: Vec<Box<dyn TaskProgress>>,
-    worker_thread_close_token: CloseToken,
 }
