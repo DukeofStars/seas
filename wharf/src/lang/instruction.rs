@@ -20,7 +20,6 @@ pub enum Instruction {
     REQUIRE(String),
     /// Searchs the path for a file, if it is found, the rope will be cut (stop executing).
     REQUIRENOT(String),
-    None,
 }
 
 impl Instruction {
@@ -46,7 +45,7 @@ impl Instruction {
                     .parse()
                     .expect("Expected Path"),
             ),
-            "PRINT" => Instruction::PRINT(args.join(" ")),
+            "PRINT" => Instruction::PRINT(args.get(0).expect("Need something to print").to_owned()),
             "ATTACH" => Instruction::ATTACH(args.get(0).expect("Expected rope name").to_owned()),
             "CHECK" => Instruction::CHECK(
                 args.get(0).expect("Expected command").to_owned(),

@@ -117,14 +117,25 @@ pub fn run(path: PathBuf) {
                     return;
                 }
             }
-            None => {}
         }
     }
 }
 
 pub fn reverse(path: PathBuf) {
+    let mut path = path;
+    if path
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .ends_with(".ship")
+    {
+        println!("{}: Extracting ship", "Info".blue());
+        extract(&path);
+        path = path.with_extension("").join("build.rope");
+    }
     let parsed = parse(&path);
-    if path.parent().is_some() {
+    if path.canonicalize().unwrap().parent().is_some() {
         let path = path
             .canonicalize()
             .unwrap()
@@ -147,13 +158,8 @@ pub fn reverse(path: PathBuf) {
                 }
             }
             CMD(cmd, args) => {
-                let mut cmd_string = cmd.to_owned();
-                args.iter().for_each(|arg| {
-                        cmd_string.push_str(" ");
-                        cmd_string.push_str(arg);
-                });
-                if !cmd_string.contains("--ignore") {
-                    println!("{}: External commands cannot be reversed, if you are the developer, we strongly recommend you use the provided commands that are reversable, or use the OWN command to tell wharf the outputs of the command ({})", "Warning".yellow(), cmd_string)
+                if !args.contains(&"--ignore".to_string()) {
+                    println!("{}: External commands cannot be reversed, if you are the developer, we strongly recommend you use the provided commands that are reversable, or use the OWN command to tell wharf the outputs of the command ({} {})", "Warning".yellow(), cmd, args.join(" "))
                 }
             }
             OWN(path) => {
@@ -167,7 +173,7 @@ pub fn reverse(path: PathBuf) {
             PRINT(_) => {}
             // Reverse the attached rope
             ATTACH(rope) => {
-                let path = PathBuf::from(rope).with_extension(".rope");
+                let path = PathBuf::from(format!("{rope}.rope"));
                 reverse(path);
             }
             // Cannot reverse a check
@@ -175,7 +181,6 @@ pub fn reverse(path: PathBuf) {
             CHECKERR(_, _) => {}
             REQUIRE(_) => {}
             REQUIRENOT(_) => {}
-            None => {}
         })
 }
 
