@@ -35,56 +35,91 @@ pub fn run(path: PathBuf) {
             .replace("\\\\?\\", "");
         set_current_dir(path).unwrap();
     }
-    parsed.iter().for_each(|instruction| match instruction {
-        COPY(src, dst) => {
-            if src.is_dir() {
-                copy_dir(src, dst);
-            } else {
-                fs::copy(src, dst).expect("Failed to copy the file");
-            }
-        }
-        CMD(cmd, args) => {
-            let mut command = Command::new("cmd.exe");
-            command.args(&["/C", cmd]);
-            args.iter().for_each(|arg| {
-                if !arg.eq("--ignore") {
-                    command.arg(arg);
+    for instruction in parsed.iter() {
+        match instruction {
+            COPY(src, dst) => {
+                if src.is_dir() {
+                    copy_dir(src, dst);
+                } else {
+                    fs::copy(src, dst).expect("Failed to copy the file");
                 }
-            });
-            command.spawn().expect("Failed to execute the command");
-        }
-        OWN(_) => {}
-        PRINT(s) => {
-            println!("{}", s);
-        }
-        ATTACH(rope) => {
-            let mut rope = rope.clone();
-            rope.push_str(".rope");
-            let path = PathBuf::from(rope);
-            run(path);
-        }
-        CHECK(cmd, args) => {
-            let mut command = Command::new("cmd.exe");
-            command.args(&["/C", cmd]);
-            args.iter().for_each(|arg| {
-                command.arg(arg);
-            });
-            command.stdin(Stdio::null()).stdout(Stdio::null());
-            let status = command.status().expect("Failed to execute the command");
-            if !status.success() {
-                std::process::exit(status.code().unwrap_or(1));
             }
+            CMD(cmd, args) => {
+                let mut command = Command::new("cmd.exe");
+                command.args(&["/C", cmd]);
+                args.iter().for_each(|arg| {
+                    if !arg.eq("--ignore") {
+                        command.arg(arg);
+                    }
+                });
+                command.spawn().expect("Failed to execute the command");
+            }
+            OWN(_) => {}
+            PRINT(s) => {
+                println!("{}", s);
+            }
+            ATTACH(rope) => {
+                let mut rope = rope.clone();
+                rope.push_str(".rope");
+                let path = PathBuf::from(rope);
+                run(path);
+            }
+            CHECK(cmd, args) => {
+                let mut command = Command::new(cmd);
+                args.iter().for_each(|arg| {
+                    command.arg(arg);
+                });
+                command.stdin(Stdio::null()).stdout(Stdio::null());
+                let status = command.status();
+                if status.is_err() {
+                    // Command has failed
+                    return;
+                }
+                let status = status.unwrap();
+                if !status.success() {
+                    return;
+                }
+            }
+            CHECKERR(cmd, args) => {
+                let mut command = Command::new(cmd);
+                args.iter().for_each(|arg| {
+                    command.arg(arg);
+                });
+                command.stdin(Stdio::null()).stdout(Stdio::null());
+                let status = command.status();
+                if status.is_err() {
+                } else {
+                    let status = status.unwrap();
+                    if status.success() {
+                        return;
+                    }
+                }
+            }
+            REQUIRE(file) => {
+                let status = Command::new("where")
+                    .arg(file)
+                    .stdout(Stdio::null())
+                    .stdin(Stdio::null())
+                    .status()
+                    .expect("Failed to execute command");
+                if !status.success() {
+                    return;
+                }
+            }
+            REQUIRENOT(file) => {
+                let status = Command::new("where")
+                    .arg(file)
+                    .stdout(Stdio::null())
+                    .stdin(Stdio::null())
+                    .status()
+                    .expect("Failed to execute command");
+                if status.success() {
+                    return;
+                }
+            }
+            None => {}
         }
-        CHECKERR(cmd, args) => {
-            let mut command = Command::new("cmd.exe");
-            command.args(&["/C", cmd]);
-            args.iter().for_each(|arg| {
-                command.arg(arg);
-            });
-            command.spawn().expect("Failed to execute the command");
-        }
-        None => {}
-    });
+    }
 }
 
 pub fn reverse(path: PathBuf) {
@@ -138,6 +173,8 @@ pub fn reverse(path: PathBuf) {
             // Cannot reverse a check
             CHECK(_, _) => {}
             CHECKERR(_, _) => {}
+            REQUIRE(_) => {}
+            REQUIRENOT(_) => {}
             None => {}
         })
 }

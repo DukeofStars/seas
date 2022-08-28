@@ -16,6 +16,10 @@ pub enum Instruction {
     CHECK(String, Vec<String>),
     /// Runs a specified command then checks it's exit code, if it succeeds, the script will exit.
     CHECKERR(String, Vec<String>),
+    /// Searchs the path for a file, if it is unfound, the rope will be cut (stop executing).
+    REQUIRE(String),
+    /// Searchs the path for a file, if it is found, the rope will be cut (stop executing).
+    REQUIRENOT(String),
     None,
 }
 
@@ -52,6 +56,12 @@ impl Instruction {
                 args.get(0).expect("Expected command").to_owned(),
                 args.split_first().unwrap().1.to_vec(),
             ),
+            "REQUIRE" => {
+                Instruction::REQUIRE(args.get(0).expect("Expected file to find").to_owned())
+            }
+            "REQUIRENOT" => {
+                Instruction::REQUIRENOT(args.get(0).expect("Expected file to find").to_owned())
+            }
             _ => panic!("Invalid instruction {}", instruction),
         }
     }
