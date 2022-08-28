@@ -1,3 +1,5 @@
 target/
 wharf/my-ship/
 Cargo.lock
+.idea/
+*.iml

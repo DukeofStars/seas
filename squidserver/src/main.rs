@@ -1,5 +1,87 @@
-use axum::*;
+use std::{
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+};
 
-fn main() {
-    println!("Starting squid server");
+use axum::{routing::*, Extension, Router, Server};
+
+use tokio::signal;
+use tracing::info;
+
+pub use squidserver::*;
+
+mod routes;
+mod worker;
+
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::fmt::init();
+
+    let state = SharedState::default();
+
+    let app = app(state.clone()).await;
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], 5664));
+    info!("listening on {}", addr);
+    Server::bind(&addr)
+        .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal(state.clone()))
+        .await
+        .unwrap();
+}
+
+async fn shutdown_signal(state: SharedState) {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(SignalKind::terminate())
+            .expect("Failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {}
+    }
+
+    info!("Shutting down the server, this could take up to 10 seconds");
+
+    // Tell worker thread to stop
+    state
+        .write()
+        .unwrap()
+        .worker_thread_close_token
+        .lock()
+        .await
+        .stop();
+}
+
+async fn app(state: SharedState) -> Router {
+    let _worker_thread = tokio::spawn(worker::worker(
+        state.clone(),
+        state.read().unwrap().worker_thread_close_token.clone(),
+    ));
+
+    Router::new()
+        .route("/", get(routes::root))
+        .route("/tasks/", get(routes::get_task_list))
+        .route("/do", post(routes::insert_task))
+        .layer(Extension(state))
+}
+
+type SharedState = Arc<RwLock<State>>;
+
+#[derive(Debug, Default)]
+pub struct State {
+    tasks_progress: Vec<Box<dyn TaskProgress>>,
+    worker_thread_close_token: CloseToken,
 }
